@@ -1,0 +1,35 @@
+图片重命名工具 - 文件说明
+================================
+
+📁 必需文件（核心脚本）：
+├── rename_images.py           ⭐ 主要重命名脚本
+├── fix_ai_json.py            ⭐ JSON引用修复脚本
+└── 一键重命名.sh             ⭐ 快速执行脚本
+
+📁 生成文件（自动创建）：
+├── rename_report_project.txt  📋 映射关系报告（重要！）
+└── image_mapping.json        📋 JSON格式映射文件
+
+📁 文档文件：
+├── 图片重命名工具使用指南.md   📖 详细使用说明
+└── 文件说明.txt              📖 本文件
+
+================================
+🚀 快速使用方法：
+
+方法1：一键执行（推荐）
+./一键重命名.sh
+
+方法2：手动执行
+python3 rename_images.py "Kicdel/Classes/Source/Assets.xcassets" --random-names --project-root "."
+python3 fix_ai_json.py --project-root "." --mapping-file "rename_report_project.txt"
+
+================================
+⚠️ 重要提醒：
+
+1. 执行前务必备份项目
+2. rename_report_project.txt 文件很重要，包含所有映射关系
+3. 如果出现问题，可以使用映射文件进行恢复
+4. 执行完成后建议清理Xcode缓存
+
+================================
