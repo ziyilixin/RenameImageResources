@@ -15,8 +15,13 @@ if [ ! -f "fix_ai_json.py" ]; then
     exit 1
 fi
 
+if [ ! -f "fix_image_resolution.py" ]; then
+    echo "❌ 错误: 找不到 fix_image_resolution.py"
+    exit 1
+fi
+
 # 设置路径
-ASSETS_PATH="Kicdel/Classes/Source/Assets.xcassets"
+ASSETS_PATH="Zibes/Classes/Source/Assets.xcassets"
 PROJECT_ROOT="."
 
 # 检查Assets路径
@@ -36,7 +41,7 @@ if [[ $confirm != [yY] && $confirm != [yY][eE][sS] ]]; then
     exit 0
 fi
 
-# 第一步：重命名图片
+# 第一步：重命名图片（一条命令完成所有操作）
 echo ""
 echo "第一步：重命名图片文件..."
 python3 rename_images.py "$ASSETS_PATH" --random-names --project-root "$PROJECT_ROOT"
@@ -46,25 +51,15 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# 第二步：修复JSON引用
+# 第二步：验证结果
 echo ""
-echo "第二步：修复JSON文件引用..."
-python3 fix_ai_json.py --project-root "$PROJECT_ROOT" --mapping-file "rename_report_project.txt"
-
-if [ $? -ne 0 ]; then
-    echo "❌ JSON引用修复失败"
-    exit 1
-fi
-
-# 第三步：验证结果
-echo ""
-echo "第三步：验证结果..."
+echo "第二步：验证结果..."
 
 # 检查是否还有原始文件夹
-ORIGINAL_FOLDERS=$(find "$ASSETS_PATH" -name "Kicdel_*" -type d 2>/dev/null | wc -l)
+ORIGINAL_FOLDERS=$(find "$ASSETS_PATH" -name "Zibes_*" -type d 2>/dev/null | wc -l)
 if [ $ORIGINAL_FOLDERS -gt 0 ]; then
     echo "⚠️  发现 $ORIGINAL_FOLDERS 个原始文件夹未处理"
-    find "$ASSETS_PATH" -name "Kicdel_*" -type d
+    find "$ASSETS_PATH" -name "Zibes_*" -type d
 else
     echo "✅ 没有发现原始文件夹"
 fi
@@ -77,16 +72,41 @@ else
     echo "⚠️  映射关系文件不存在"
 fi
 
+# 检查图片分辨率后缀
+echo ""
+echo "第三步：检查图片分辨率后缀..."
+RESOLUTION_ISSUES=$(find "$ASSETS_PATH" -name "*.png" ! -name "*@2x.png" ! -name "*@3x.png" | wc -l)
+if [ $RESOLUTION_ISSUES -gt 0 ]; then
+    echo "⚠️  发现 $RESOLUTION_ISSUES 个图片文件缺少分辨率后缀"
+    echo "运行分辨率修复脚本..."
+    python3 fix_image_resolution.py "$ASSETS_PATH"
+else
+    echo "✅ 所有图片文件都有正确的分辨率后缀"
+fi
+
 echo ""
 echo "🎉 图片重命名流程完成！"
 echo ""
 echo "📋 重要文件："
-echo "  - rename_images.py      (核心重命名脚本)"
-echo "  - fix_ai_json.py        (JSON引用修复脚本)"
+echo "  - rename_images.py      (核心重命名脚本 - 包含所有功能)"
+echo "  - fix_ai_json.py        (JSON引用修复脚本 - 备用)"
+echo "  - fix_image_resolution.py (分辨率修复脚本 - 备用)"
 echo "  - rename_report_project.txt (映射关系报告)"
 echo "  - image_mapping.json    (JSON格式映射文件)"
+echo ""
+echo "🔧 脚本功能："
+echo "  ✅ 文件夹重命名"
+echo "  ✅ 图片文件重命名（保持分辨率后缀）"
+echo "  ✅ Contents.json更新"
+echo "  ✅ 代码文件引用更新"
+echo "  ✅ JSON文件引用更新"
+echo "  ✅ 映射关系保存"
 echo ""
 echo "💡 建议："
 echo "  1. 在Xcode中清理缓存并重新构建项目"
 echo "  2. 测试应用确保图片正常显示"
 echo "  3. 提交代码: git add -A && git commit -m '完成图片重命名'"
+echo ""
+echo "🛠️ 如果遇到问题："
+echo "  - 运行: python3 fix_ai_json.py --project-root . --mapping-file rename_report_project.txt"
+echo "  - 运行: python3 fix_image_resolution.py $ASSETS_PATH"

@@ -15,9 +15,27 @@ def load_mapping_from_json(mapping_file):
     """从JSON文件加载图片名称映射关系"""
     try:
         with open(mapping_file, 'r', encoding='utf-8') as f:
-            mapping = json.load(f)
+            content = f.read()
+            print(f"读取文件内容长度: {len(content)} 字符")
+            mapping = json.loads(content)
         print(f"从 {mapping_file} 加载了 {len(mapping)} 个映射关系")
         return mapping
+    except json.JSONDecodeError as e:
+        print(f"❌ JSON解析错误: {e}")
+        print(f"错误位置: 第{e.lineno}行，第{e.colno}列")
+        # 显示错误位置附近的内容
+        try:
+            with open(mapping_file, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+                start_line = max(0, e.lineno - 3)
+                end_line = min(len(lines), e.lineno + 2)
+                print("错误位置附近的内容:")
+                for i in range(start_line, end_line):
+                    marker = ">>> " if i == e.lineno - 1 else "    "
+                    print(f"{marker}{i+1:3d}: {lines[i].rstrip()}")
+        except Exception as read_error:
+            print(f"无法读取文件内容: {read_error}")
+        return {}
     except Exception as e:
         print(f"❌ 加载映射文件失败: {e}")
         return {}
@@ -76,9 +94,26 @@ def fix_json_file(json_path, mapping):
     try:
         # 读取JSON文件
         with open(json_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
+            content = f.read()
         
         print(f"正在修复 {json_path}...")
+        print(f"  文件大小: {len(content)} 字符")
+        
+        # 尝试解析JSON
+        try:
+            data = json.loads(content)
+        except json.JSONDecodeError as e:
+            print(f"  ❌ JSON解析错误: {e}")
+            print(f"  错误位置: 第{e.lineno}行，第{e.colno}列")
+            # 显示错误位置附近的内容
+            lines = content.split('\n')
+            start_line = max(0, e.lineno - 3)
+            end_line = min(len(lines), e.lineno + 2)
+            print("  错误位置附近的内容:")
+            for i in range(start_line, end_line):
+                marker = ">>> " if i == e.lineno - 1 else "    "
+                print(f"  {marker}{i+1:3d}: {lines[i]}")
+            return 0
         
         # 计数器
         updated_count = [0]
@@ -98,6 +133,8 @@ def fix_json_file(json_path, mapping):
         
     except Exception as e:
         print(f"  ❌ 修复失败: {e}")
+        import traceback
+        traceback.print_exc()
         return 0
 
 def find_json_files(project_root):

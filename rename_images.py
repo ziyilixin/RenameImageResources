@@ -96,11 +96,28 @@ class ImageRenamer:
         """重命名imageset文件夹内的文件并更新Contents.json"""
         # 重命名图片文件
         for file in os.listdir(imageset_path):
-            if file.startswith(old_name) and file.endswith(('.png', '.jpg', '.jpeg')):
+            if file.endswith(('.png', '.jpg', '.jpeg')):
                 old_file_path = os.path.join(imageset_path, file)
-                new_file_name = file.replace(old_name, new_name)
+                # 提取文件名和扩展名
+                file_name, file_ext = os.path.splitext(file)
+                
+                # 检查是否有分辨率后缀（@2x, @3x）
+                if '@2x' in file_name:
+                    new_file_name = f"{new_name}@2x{file_ext}"
+                elif '@3x' in file_name:
+                    new_file_name = f"{new_name}@3x{file_ext}"
+                else:
+                    # 没有分辨率后缀，保持原样
+                    new_file_name = f"{new_name}{file_ext}"
+                
                 new_file_path = os.path.join(imageset_path, new_file_name)
-                os.rename(old_file_path, new_file_path)
+                
+                if old_file_path != new_file_path:
+                    try:
+                        os.rename(old_file_path, new_file_path)
+                        print(f"    ✓ 重命名文件: {file} → {new_file_name}")
+                    except Exception as e:
+                        print(f"    ✗ 重命名文件失败 {file}: {e}")
         
         # 更新Contents.json
         contents_file = os.path.join(imageset_path, "Contents.json")
@@ -110,12 +127,29 @@ class ImageRenamer:
                     contents = json.load(f)
                 
                 # 更新filename字段
+                updated = False
                 for image in contents.get('images', []):
-                    if 'filename' in image and old_name in image['filename']:
-                        image['filename'] = image['filename'].replace(old_name, new_name)
+                    if 'filename' in image:
+                        old_filename = image['filename']
+                        scale = image.get('scale', '1x')
+                        
+                        # 根据scale生成正确的文件名
+                        if scale == '2x':
+                            new_filename = f"{new_name}@2x.png"
+                        elif scale == '3x':
+                            new_filename = f"{new_name}@3x.png"
+                        else:
+                            # 1x版本通常不指定filename
+                            continue
+                        
+                        if old_filename != new_filename:
+                            image['filename'] = new_filename
+                            updated = True
                 
-                with open(contents_file, 'w', encoding='utf-8') as f:
-                    json.dump(contents, f, indent=2, ensure_ascii=False)
+                if updated:
+                    with open(contents_file, 'w', encoding='utf-8') as f:
+                        json.dump(contents, f, indent=2, ensure_ascii=False)
+                    print(f"    ✓ 更新Contents.json")
             except Exception as e:
                 print(f"    ⚠️ 更新Contents.json失败: {e}")
 
