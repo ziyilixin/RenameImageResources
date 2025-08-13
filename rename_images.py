@@ -211,6 +211,77 @@ class ImageRenamer:
         
         print(f"📊 更新了 {total_updated} 个代码文件")
 
+    def check_and_fix_json_format(self, file_path):
+        """检查并修复JSON文件格式"""
+        try:
+            # 尝试读取JSON文件
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            # 尝试解析JSON
+            try:
+                json.loads(content)
+                return True  # JSON格式正确
+            except json.JSONDecodeError as e:
+                print(f"  ⚠️ JSON格式错误: {os.path.basename(file_path)} (第{e.lineno}行)")
+                
+                # 尝试修复JSON格式
+                fixed_content = self.fix_json_format(content)
+                
+                # 验证修复后的JSON
+                try:
+                    json.loads(fixed_content)
+                    # 写回修复后的内容
+                    with open(file_path, 'w', encoding='utf-8') as f:
+                        f.write(fixed_content)
+                    print(f"  ✅ 已修复JSON格式: {os.path.basename(file_path)}")
+                    return True
+                except json.JSONDecodeError:
+                    print(f"  ❌ 无法修复JSON格式: {os.path.basename(file_path)}")
+                    return False
+                    
+        except Exception as e:
+            print(f"  ❌ 读取文件失败: {os.path.basename(file_path)} - {e}")
+            return False
+
+    def fix_json_format(self, content):
+        """修复JSON格式问题"""
+        import re
+        
+        print(f"    🔧 正在修复JSON格式...")
+        
+        # 修复缺少逗号的问题 - 在字段值后添加逗号
+        content = re.sub(r'("name": "[^"]*")\s*\n\s*("big":)', r'\1,\n            \2', content)
+        content = re.sub(r'("big": "[^"]*")\s*\n\s*("small":)', r'\1,\n            \2', content)
+        content = re.sub(r'("small": "[^"]*")\s*\n\s*("photo":)', r'\1,\n            \2', content)
+        content = re.sub(r'("photo": "[^"]*")\s*\n\s*("motto":)', r'\1,\n            \2', content)
+        content = re.sub(r'("motto": "[^"]*")\s*\n\s*("character":)', r'\1,\n            \2', content)
+        content = re.sub(r'("character": "[^"]*")\s*\n\s*("introduction":)', r'\1,\n            \2', content)
+        
+        # 修复数字值后缺少逗号的问题
+        content = re.sub(r'("aichat": \d+)\s*\n\s*("id":)', r'\1,\n            \2', content)
+        content = re.sub(r'("id": \d+)\s*\n\s*("name":)', r'\1,\n            \2', content)
+        
+        # 修复多余的逗号问题
+        content = re.sub(r'",\s*,', '",', content)
+        content = re.sub(r'}\s*,(\s*})', r'}\1', content)
+        content = re.sub(r'\]\s*,(\s*\})', r']\1', content)
+        
+        # 修复字符串结尾的多余逗号
+        content = re.sub(r'",\s*\n\s*},', '"\n        },', content)
+        
+        # 修复introduction字段结尾的多余逗号
+        content = re.sub(r'",\s*\n\s*(\s*}),', r'"\n        \1,', content)
+        
+        # 修复对象结尾的多余逗号
+        content = re.sub(r'}\s*,(\s*})', r'}\1', content)
+        content = re.sub(r'}\s*,(\s*\])', r'}\1', content)
+        
+        # 修复数组结尾的多余逗号
+        content = re.sub(r'\]\s*,(\s*\})', r']\1', content)
+        
+        return content
+
     def update_json_files(self, project_root):
         """更新JSON文件中的图片引用"""
         print(f"🔄 更新JSON文件中的图片引用...")
@@ -226,11 +297,14 @@ class ImageRenamer:
         total_updated = 0
         for file_path in json_files:
             try:
+                # 首先检查并修复JSON格式
+                if not self.check_and_fix_json_format(file_path):
+                    print(f"  ⏭️ 跳过格式错误的文件: {os.path.relpath(file_path, project_root)}")
+                    continue
+                
+                # 读取修复后的JSON文件
                 with open(file_path, 'r', encoding='utf-8') as f:
-                    try:
-                        data = json.load(f)
-                    except json.JSONDecodeError:
-                        continue
+                    data = json.load(f)
                 
                 updated_count = [0]
                 self._update_json_recursive(data, self.old_to_new, updated_count)
@@ -240,6 +314,8 @@ class ImageRenamer:
                         json.dump(data, f, indent=4, ensure_ascii=False)
                     print(f"  ✓ 更新: {os.path.relpath(file_path, project_root)} ({updated_count[0]} 个引用)")
                     total_updated += 1
+                else:
+                    print(f"  ℹ️ 无更新: {os.path.relpath(file_path, project_root)}")
                     
             except Exception as e:
                 print(f"  ✗ 更新失败 {file_path}: {e}")
